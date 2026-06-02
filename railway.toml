@@ -7,3 +7,13 @@ startCommand = "php artisan serve --host 0.0.0.0 --port $PORT"
 
 [nixpacks]
 php-version = "8.4"
+node-version = "20"
+
+[phps]
+version = "8.4"
+
+[nodes]
+version = "20"
+
+[apt]
+packages = ["php8.4-gd"]

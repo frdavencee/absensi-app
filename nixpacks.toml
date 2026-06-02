@@ -1,2 +1,8 @@
 [phps]
 version = "8.4"
+
+[nodes]
+version = "20"
+
+[apt]
+packages = ["php8.4-gd"]
