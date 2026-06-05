@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Absensi;
 use App\Models\Jadwal;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Notification;
 use Carbon\Carbon;
+use App\Notifications\PengajuanNotification;
 
 class AbsensiController extends Controller
 {
@@ -60,28 +63,49 @@ class AbsensiController extends Controller
         $user = Auth::user();
         $now = Carbon::now();
         $today = Carbon::today();
+        $yesterday = $today->copy()->subDay();
 
-        $jadwal = Jadwal::where('user_id', $user->id)
-            ->whereDate('tanggal', $today)
-            ->first();
+        // Find active shift (today or yesterday)
+        $jadwals = Jadwal::where('user_id', $user->id)
+            ->whereIn('tanggal', [$yesterday, $today])
+            ->get();
 
-        if (!$jadwal) {
-            return back()->with('error', 'Tidak ada jadwal hari ini');
+        $activeJadwal = null;
+        foreach ($jadwals as $jadwal) {
+            $start = Carbon::createFromFormat('Y-m-d H:i:s', $jadwal->tanggal . ' ' . $jadwal->jam_masuk);
+            $end = Carbon::createFromFormat('Y-m-d H:i:s', $jadwal->tanggal . ' ' . $jadwal->jam_pulang);
+
+            // If shift crosses midnight (end time earlier than start time), add one day to end
+            if ($jadwal->jam_pulang < $jadwal->jam_masuk) {
+                $end->addDay();
+            }
+
+            if ($now->between($start, $end)) {
+                $activeJadwal = $jadwal;
+                break;
+            }
         }
 
+        if (!$activeJadwal) {
+            return back()->with('error', 'Tidak ada jadwal yang aktif saat ini');
+        }
+
+        // Check if already absen for this shift
         $absen = Absensi::where('user_id', $user->id)
-            ->whereDate('tanggal', $today)
+            ->where('tanggal', $activeJadwal->tanggal)
             ->first();
 
         if ($absen) {
-            return back()->with('error', 'Sudah absen hari ini');
+            return back()->with('error', 'Sudah absen untuk shift ini');
         }
 
-        $status = ($now->format('H:i:s') > $jadwal->jam_masuk) ? 'Telat' : 'Hadir';
+        // Determine status: Telat if clock-in time is after shift start time
+        $start = Carbon::createFromFormat('Y-m-d H:i:s', $activeJadwal->tanggal . ' ' . $activeJadwal->jam_masuk);
+        $status = $now->greaterThan($start) ? 'Telat' : 'Hadir';
 
         $data = [
             'user_id' => $user->id,
-            'tanggal' => $today,
+            'tanggal' => $activeJadwal->tanggal,
             'jam_masuk' => $now->format('H:i:s'),
             'status' => $status,
             'latitude' => $request->latitude,
@@ -110,10 +134,11 @@ class AbsensiController extends Controller
     {
         $user = Auth::user();
         $now = Carbon::now();
-        $today = Carbon::today();
 
+        // Find the most recent absen record without pulang time (open shift)
         $absen = Absensi::where('user_id', $user->id)
-            ->whereDate('tanggal', $today)
+            ->whereNull('jam_pulang')
+            ->orderBy('tanggal', 'desc')
             ->first();
 
         if (!$absen) {
@@ -157,7 +182,13 @@ class AbsensiController extends Controller
             'keterangan' => $request->keterangan,
         ];
 
-        if ($request->hasFile('foto')) {
+        if (strpos($request->foto, 'base64') !== false) {
+            $image = explode(',', $request->foto);
+            $imageData = base64_decode($image[1]);
+            $namaFoto = time() . '_' . $user->id . '_izin.jpg';
+            Storage::disk('public')->put('foto/' . $namaFoto, $imageData);
+            $data['foto_masuk'] = $namaFoto;
+        } elseif ($request->hasFile('foto')) {
             $foto = $request->file('foto');
             $namaFoto = time() . '_' . $user->id . '_izin.' . $foto->getClientOriginalExtension();
             $foto->storeAs('public/foto', $namaFoto);
@@ -165,6 +196,11 @@ class AbsensiController extends Controller
         }
 
         Absensi::create($data);
+
+        // Notify user and admins
+        $user->notify(new PengajuanNotification($request->status, $request->tanggal));
+        $admins = User::where('role', 'admin')->get();
+        Notification::send($admins, new PengajuanNotification($request->status, $request->tanggal));
 
         return back()->with('success', 'Pengajuan berhasil');
     }
@@ -254,12 +290,21 @@ class AbsensiController extends Controller
             'approval' => 'Approved'
         ]);
 
+        // Notify user of approval
+        $user = $absensi->user;
+        $user->notify(new PengajuanNotification('disetujui', $absensi->tanggal));
+
         return back()->with('success', 'Disetujui');
     }
 
     public function destroyPengajuan($id)
     {
-        Absensi::findOrFail($id)->delete();
+        $absensi = Absensi::findOrFail($id);
+        // Notify user of rejection/deletion
+        $user = $absensi->user;
+        $user->notify(new PengajuanNotification('ditolak', $absensi->tanggal));
+
+        $absensi->delete();
 
         return back()->with('success', 'Pengajuan dihapus');
     }
@@ -271,7 +316,7 @@ class AbsensiController extends Controller
         return back()->with('success', 'Data absensi dihapus');
     }
 
-    public function exportExcel()
+    public function exportCsv()
     {
         $user = Auth::user();
 
@@ -282,9 +327,24 @@ class AbsensiController extends Controller
             ->latest()
             ->get();
 
+        // CSV header
         $csv = "Tanggal,Jam Masuk,Jam Pulang,Status,Keterangan\n";
+
         foreach ($data as $d) {
-            $csv .= "{$d->tanggal},{$d->jam_masuk},{$d->jam_pulang},{$d->status},{$d->keterangan}\n";
+            // Escape each field for CSV: enclose in double quotes and escape double quotes by doubling them
+            $tanggal = $d->tanggal ?: '';
+            $jam_masuk = $d->jam_masuk ?: '';
+            $jam_pulang = $d->jam_pulang ?: '';
+            $status = $d->status ?: '';
+            $keterangan = $d->keterangan ?: '';
+
+            $tanggal = '"' . str_replace('"', '""', $tanggal) . '"';
+            $jam_masuk = '"' . str_replace('"', '""', $jam_masuk) . '"';
+            $jam_pulang = '"' . str_replace('"', '""', $jam_pulang) . '"';
+            $status = '"' . str_replace('"', '""', $status) . '"';
+            $keterangan = '"' . str_replace('"', '""', $keterangan) . '"';
+
+            $csv .= "{$tanggal},{$jam_masuk},{$jam_pulang},{$status},{$keterangan}\n";
         }
 
         return response($csv)

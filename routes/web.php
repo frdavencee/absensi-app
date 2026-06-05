@@ -58,7 +58,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/absen/pulang', [AbsensiController::class, 'pulang'])->name('absen.pulang');
     Route::post('/izin', [AbsensiController::class, 'izin'])->name('izin');
     Route::get('/data-absensi', [AbsensiController::class, 'dataAbsensi'])->name('data.absensi');
-    Route::get('/export-absensi', [AbsensiController::class, 'exportExcel'])->name('export.absensi');
+    Route::get('/export-absensi', [AbsensiController::class, 'exportCsv'])->name('export.absensi');
     Route::get('/pengajuan', [AbsensiController::class, 'pengajuan'])->name('pengajuan');
     Route::post('/approve/{id}', [AbsensiController::class, 'approve'])->name('approve');
     Route::delete('/pengajuan/{id}', [AbsensiController::class, 'destroyPengajuan'])->name('pengajuan.destroy');

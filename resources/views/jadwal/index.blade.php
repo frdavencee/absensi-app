@@ -65,6 +65,22 @@
 
         @else
         <!-- DETAIL VIEW -->
+
+        @if($selectedUser)
+        <div class="ml-8 inline-flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 mt-2">
+            <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
+                {{ strtoupper(substr($selectedUser->name, 0, 1)) }}
+            </div>
+            <span class="font-semibold text-gray-800">{{ $selectedUser->name }}</span>
+            <a href="{{ route('jadwal.index', ['user_id' => $selectedUser->id]) }}" class="text-blue-600 hover:text-blue-800 ml-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+            </a>
+        </div>
+        @endif
+
+        @if(Auth::user()->role == 'admin' && isset($selectedUser))
         <div class="mb-4">
             <a href="{{ route('jadwal.index') }}" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -72,47 +88,62 @@
                 </svg>
                 Kembali ke daftar karyawan
             </a>
-
-            @if($selectedUser)
-            <div class="ml-8 inline-flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 mt-2">
-                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
-                    {{ strtoupper(substr($selectedUser->name, 0, 1)) }}
-                </div>
-                <span class="font-semibold text-gray-800">{{ $selectedUser->name }}</span>
-                <a href="{{ route('jadwal.index', ['user_id' => $selectedUser->id]) }}" class="text-blue-600 hover:text-blue-800 ml-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                </a>
-            </div>
-            @endif
-
-            @if(Auth::user()->role == 'admin')
-            <div class="mt-4 flex flex-wrap items-center gap-3">
-                <a href="{{ route('jadwal.create', request('user_id') ? ['user_id' => request('user_id')] : []) }}" class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium transition shadow-lg">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    Tambah Jadwal
-                </a>
-
-                <form action="{{ route('jadwal.import') }}" method="POST" enctype="multipart/form-data" class="inline-flex items-center gap-2">
-                    @csrf
-                    @if($selectedUser)
-                    <input type="hidden" name="user_id" value="{{ $selectedUser->id }}">
-                    @endif
-                    <input type="file" name="file" id="excel-file" class="hidden" accept=".xlsx,.xls,.csv" onchange="this.form.submit()">
-                    <label for="excel-file" class="inline-flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium transition shadow-lg cursor-pointer">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-                        </svg>
-                        Import Excel
-                    </label>
-                </form>
-            </div>
-            <p class="text-xs text-gray-400 mt-2">Format: Tanggal, Shift (Pagi/Siang/Malam), Status (Kerja/Libur) — untuk 1 bulan penuh</p>
-            @endif
         </div>
+        @endif
+
+        @if(Auth::user()->role == 'admin')
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+            <a href="{{ route('jadwal.create', request('user_id') ? ['user_id' => request('user_id')] : []) }}" class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium transition shadow-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-cap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Tambah Jadwal
+            </a>
+
+            <form action="{{ route('jadwal.import') }}" method="POST" enctype="multipart/form-data" class="inline-flex items-center gap-2">
+                @csrf
+                @if($selectedUser)
+                <input type="hidden" name="user_id" value="{{ $selectedUser->id }}">
+                @endif
+                <input type="file" name="file" id="excel-file" class="hidden" accept=".xlsx,.xls,.csv" onchange="this.form.submit()">
+                <label for="excel-file" class="inline-flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-5 py-2.5 rounded-xl font-medium transition shadow-lg cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    </svg>
+                    Import Excel
+                </label>
+            </form>
+        </div>
+        @endif
+        <p class="text-xs text-gray-400 mt-2">Format: Tanggal, Shift (Pagi/Siang/Malam), Status (Kerja/Libur) — untuk 1 bulan penuh</p>
+        <form method="GET" action="{{ route('jadwal.index', request()->only(['user_id'])) }}" class="mt-4 flex flex-wrap items-center gap-3">
+            <label for="periode-filter" class="text-xs font-medium text-gray-600">Periode:</label>
+            <select name="periode" id="periode-filter" class="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="
+                const value = this.value;
+                if (value) {
+                    const [tahun, bulan] = value.split('-');
+                    document.getElementById('bulan-input').value = bulan;
+                    document.getElementById('tahun-input').value = tahun;
+                } else {
+                    document.getElementById('bulan-input').value = '';
+                    document.getElementById('tahun-input').value = '';
+                }
+                this.form.submit();
+            ">
+                <option value="">Semua Periode</option>
+                @for($y = (date('Y') - 5); $y <= (date('Y') + 5); $y++)
+                    @for($m = 1; $m <= 12; $m++)
+                        <option value="{{ $y }}-{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}" 
+                            {{ request('tahun') == $y && request('bulan') == $m ? 'selected' : '' }}>
+                            {{ date('F', mktime(0,0,0,$m,1)) }} {{ $y }}
+                        </option>
+                    @endfor
+                @endfor
+            </select>
+            <input type="hidden" name="bulan" id="bulan-input" value="{{ request('bulan') }}">
+            <input type="hidden" name="tahun" id="tahun-input" value="{{ request('tahun') }}">
+        </form>
+    </div>
 
         <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
             <div class="overflow-x-auto">
