@@ -102,19 +102,20 @@ class AbsensiController extends Controller
             $start = Carbon::createFromFormat('Y-m-d H:i:s', $tanggalStr . ' ' . $jadwal->jam_masuk);
             $end = Carbon::createFromFormat('Y-m-d H:i:s', $tanggalStr . ' ' . $jadwal->jam_pulang);
 
-            // If shift crosses midnight (end time earlier than start time), add one day to end
             if ($jadwal->jam_pulang < $jadwal->jam_masuk) {
                 $end->addDay();
             }
 
-            if ($now->between($start, $end)) {
+            $clockInStart = $start->copy()->subHour();
+
+            if ($now->between($clockInStart, $end)) {
                 $activeJadwal = $jadwal;
                 break;
             }
         }
 
         if (!$activeJadwal) {
-            return back()->with('error', 'Tidak ada jadwal yang aktif saat ini');
+            return back()->with('error', 'Absen masuk hanya bisa dilakukan mulai 1 jam sebelum jadwal dimulai');
         }
 
         // Check if already absen for this shift
@@ -192,6 +193,20 @@ class AbsensiController extends Controller
 
         if ($hasIzinSakit) {
             return back()->with('error', 'Tidak bisa absen pulang pada tanggal tersebut karena sedang izin/sakit yang sudah disetujui');
+        }
+
+        $jadwal = Jadwal::where('user_id', $user->id)
+            ->whereDate('tanggal', $tanggalStr)
+            ->whereNotNull('jam_pulang')
+            ->first();
+
+        if ($jadwal) {
+            $jamPulangJadwal = Carbon::createFromFormat('H:i:s', $jadwal->jam_pulang);
+            $batasPulang = $jamPulangJadwal->copy()->addHours(2);
+
+            if ($now->greaterThanOrEqualTo($batasPulang)) {
+                return back()->with('error', 'Absen pulang maksimal 2 jam setelah jadwal pulang (' . $jadwal->jam_pulang . '). Sekarang: ' . $now->format('H:i'));
+            }
         }
 
         $absen->update([
