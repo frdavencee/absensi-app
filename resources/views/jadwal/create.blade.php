@@ -56,32 +56,35 @@
                            class="w-full border rounded-2xl p-4 mt-2">
                 </div>
 
-                {{-- SHIFT --}}
-                <div>
-                    <label class="font-semibold">Shift</label>
+                    {{-- SHIFT --}}
+                    <div>
+                        <label class="font-semibold">Shift</label>
 
-                    <select name="shift"
-                            class="w-full border rounded-2xl p-4 mt-2">
+                        <select name="shift"
+                                id="shift-select"
+                                class="w-full border rounded-2xl p-4 mt-2">
 
-                        <option value="Pagi">Pagi</option>
-                        <option value="Siang">Siang</option>
-                        <option value="Malam">Malam</option>
+                            <option value="">-- Pilih Shift --</option>
+                            <option value="Pagi">Pagi</option>
+                            <option value="Siang">Siang</option>
+                            <option value="Malam">Malam</option>
 
-                    </select>
-                </div>
+                        </select>
+                    </div>
 
-                {{-- STATUS (FIX: hanya jadwal) --}}
-                <div>
-                    <label class="font-semibold">Status</label>
+                    {{-- STATUS --}}
+                    <div>
+                        <label class="font-semibold">Status</label>
 
-                    <select name="status"
-                            class="w-full border rounded-2xl p-4 mt-2">
+                        <select name="status"
+                                id="status-select"
+                                class="w-full border rounded-2xl p-4 mt-2">
 
-                        <option value="Kerja">Kerja</option>
-                        <option value="Libur">Libur</option>
+                            <option value="Kerja">Kerja</option>
+                            <option value="Libur">Libur</option>
 
-                    </select>
-                </div>
+                        </select>
+                    </div>
 
                 {{-- BUTTON --}}
                 <button type="submit"
@@ -90,11 +93,32 @@
                     Simpan Jadwal
 
                 </button>
-
             </form>
 
         </div>
 
     </div>
+
+    <script>
+        const statusSelect = document.getElementById('status-select');
+        const shiftSelect = document.getElementById('shift-select');
+
+        function toggleShift() {
+            if (statusSelect.value === 'Libur') {
+                shiftSelect.value = '';
+                shiftSelect.disabled = true;
+                shiftSelect.classList.add('bg-gray-100', 'text-gray-400');
+            } else {
+                shiftSelect.disabled = false;
+                shiftSelect.classList.remove('bg-gray-100', 'text-gray-400');
+                if (!shiftSelect.value) {
+                    shiftSelect.value = 'Pagi';
+                }
+            }
+        }
+
+        statusSelect.addEventListener('change', toggleShift);
+        toggleShift();
+    </script>
 
 </x-app-layout>

@@ -94,24 +94,33 @@
 
             <!-- Filter -->
             <form method="GET" action="{{ route('pengajuan') }}" class="mt-4 flex flex-wrap items-center gap-3">
+                @if($selectedUser)
                 <input type="hidden" name="user_id" value="{{ $selectedUser->id }}">
+                @endif
 
-                <select name="bulan" class="rounded-lg border-gray-300 border px-3 py-2 text-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
+                <label for="bulan-filter" class="text-xs font-medium text-gray-600">Bulan:</label>
+                <select name="bulan" id="bulan-filter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring focus:ring-blue-200" onchange="this.form.submit()">
                     <option value="">Semua Bulan</option>
-                    @for($m = 1; $m <= 12; $m++)
-                        <option value="{{ $m }}" {{ request('bulan') == $m ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($m)->format('F') }}</option>
-                    @endfor
+                    @foreach(['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'] as $i => $nama)
+                        <option value="{{ $i + 1 }}" {{ request('bulan') == ($i + 1) ? 'selected' : '' }}>
+                            {{ $nama }}
+                        </option>
+                    @endforeach
                 </select>
 
-                <select name="tahun" class="rounded-lg border-gray-300 border px-3 py-2 text-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
+                <label for="tahun-filter" class="text-xs font-medium text-gray-600">Tahun:</label>
+                <select name="tahun" id="tahun-filter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring focus:ring-blue-200" onchange="this.form.submit()">
                     <option value="">Semua Tahun</option>
-                    @for($y = date('Y'); $y >= date('Y') - 3; $y--)
-                        <option value="{{ $y }}" {{ request('tahun') == $y ? 'selected' : '' }}>{{ $y }}</option>
+                    @for($y = (date('Y') - 5); $y <= date('Y'); $y++)
+                        <option value="{{ $y }}" {{ request('tahun') == $y ? 'selected' : '' }}>
+                            {{ $y }}
+                        </option>
                     @endfor
                 </select>
 
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">Filter</button>
-                <a href="{{ route('pengajuan', ['user_id' => $selectedUser->id]) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">Reset</a>
+                @if(request()->filled('bulan') || request()->filled('tahun'))
+                <a href="{{ route('pengajuan', $selectedUser ? ['user_id' => $selectedUser->id] : []) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">Reset</a>
+                @endif
             </form>
         </div>
 
@@ -233,6 +242,34 @@
 
         @else
         <!-- USER: OWN PENGajuan VIEW (READ ONLY) -->
+
+        <!-- Filter -->
+        <form method="GET" action="{{ route('pengajuan') }}" class="mb-4 flex flex-wrap items-center gap-3">
+            <label for="bulan-filter" class="text-xs font-medium text-gray-600">Bulan:</label>
+            <select name="bulan" id="bulan-filter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring focus:ring-blue-200" onchange="this.form.submit()">
+                <option value="">Semua Bulan</option>
+                @foreach(['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'] as $i => $nama)
+                    <option value="{{ $i + 1 }}" {{ request('bulan') == ($i + 1) ? 'selected' : '' }}>
+                        {{ $nama }}
+                    </option>
+                @endforeach
+            </select>
+
+            <label for="tahun-filter" class="text-xs font-medium text-gray-600">Tahun:</label>
+            <select name="tahun" id="tahun-filter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring focus:ring-blue-200" onchange="this.form.submit()">
+                <option value="">Semua Tahun</option>
+                @for($y = (date('Y') - 5); $y <= date('Y'); $y++)
+                    <option value="{{ $y }}" {{ request('tahun') == $y ? 'selected' : '' }}>
+                        {{ $y }}
+                    </option>
+                @endfor
+            </select>
+
+            @if(request()->filled('bulan') || request()->filled('tahun'))
+            <a href="{{ route('pengajuan') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">Reset</a>
+            @endif
+        </form>
+
         <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full">

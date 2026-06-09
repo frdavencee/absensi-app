@@ -38,7 +38,7 @@
                     </thead>
 
                     <tbody class="divide-y divide-gray-100">
-                        @forelse($usersWithRecords as $u)
+                        @forelse($users as $u)
                         <tr class="hover:bg-gray-50/50 transition">
                             <td class="px-6 py-4">
                                 <a href="{{ route('data.absensi', ['user_id' => $u->id]) }}" class="flex items-center gap-3 group">
@@ -48,11 +48,10 @@
                                     <span class="font-medium text-gray-800 group-hover:text-blue-600 transition">{{ $u->name }}</span>
                                 </a>
                             </td>
-
-                            <td class="px-6 py-4 text-gray-600">{{ $u->absensis()->where('status', 'Hadir')->count() }}</td>
-                            <td class="px-6 py-4 text-gray-600">{{ $u->absensis()->where('status', 'Telat')->count() }}</td>
-                            <td class="px-6 py-4 text-gray-600">{{ $u->absensis()->where('status', 'Izin')->count() }}</td>
-                            <td class="px-6 py-4 text-gray-600">{{ $u->absensis()->where('status', 'Sakit')->count() }}</td>
+                            <td class="px-6 py-4 text-gray-600">{{ $u->total_hadir ?? $u->absensis()->where('status', 'Hadir')->count() }}</td>
+                            <td class="px-6 py-4 text-gray-600">{{ $u->total_telat ?? $u->absensis()->where('status', 'Telat')->count() }}</td>
+                            <td class="px-6 py-4 text-gray-600">{{ $u->total_izin ?? $u->absensis()->where('status', 'Izin')->count() }}</td>
+                            <td class="px-6 py-4 text-gray-600">{{ $u->total_sakit ?? $u->absensis()->where('status', 'Sakit')->count() }}</td>
                         </tr>
                         @empty
                         <tr>
@@ -74,14 +73,12 @@
         @else
         <!-- DETAIL VIEW -->
         <div class="mb-4">
-            @if(Auth::user()->role == 'admin')
             <a href="{{ route('data.absensi') }}" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                 </svg>
                 Kembali ke daftar karyawan
             </a>
-            @endif
 
             @if($selectedUser)
             <div class="ml-8 inline-flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 mt-2">
@@ -98,22 +95,28 @@
                 <input type="hidden" name="user_id" value="{{ $selectedUser->id }}">
                 @endif
 
-                <select name="bulan" class="rounded-lg border-gray-300 border px-3 py-2 text-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
+                <label for="bulan-filter" class="text-xs font-medium text-gray-600">Bulan:</label>
+                <select name="bulan" id="bulan-filter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring focus:ring-blue-200" onchange="this.form.submit()">
                     <option value="">Semua Bulan</option>
-                    @for($m = 1; $m <= 12; $m++)
-                        <option value="{{ $m }}" {{ request('bulan') == $m ? 'selected' : '' }}>{{ \Carbon\Carbon::create()->month($m)->format('F') }}</option>
-                    @endfor
+                    @foreach(['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'] as $i => $nama)
+                        <option value="{{ $i + 1 }}" {{ request('bulan') == ($i + 1) ? 'selected' : '' }}>
+                            {{ $nama }}
+                        </option>
+                    @endforeach
                 </select>
 
-                <select name="tahun" class="rounded-lg border-gray-300 border px-3 py-2 text-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
+                <label for="tahun-filter" class="text-xs font-medium text-gray-600">Tahun:</label>
+                <select name="tahun" id="tahun-filter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring focus:ring-blue-200" onchange="this.form.submit()">
                     <option value="">Semua Tahun</option>
-                    @for($y = date('Y'); $y >= date('Y') - 3; $y--)
-                        <option value="{{ $y }}" {{ request('tahun') == $y ? 'selected' : '' }}>{{ $y }}</option>
-                    @endfor
+                    @for($y = (date('Y') - 5); $y <= date('Y'); $y++)
+                        <option value="{{ $y }}" {{ request('tahun') == $y ? 'selected' : '' }}>
+                            {{ $y }}
+                        @endfor
                 </select>
 
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">Filter</button>
+                @if(request()->filled('bulan') || request()->filled('tahun'))
                 <a href="{{ route('data.absensi', $selectedUser ? ['user_id' => $selectedUser->id] : []) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">Reset</a>
+                @endif
             </form>
         </div>
 
@@ -134,7 +137,6 @@
                     </thead>
 
                     <tbody class="divide-y divide-gray-100">
-
                         @php $currentMonth = null @endphp
 
                         @forelse($data as $d)
@@ -190,6 +192,8 @@
                                 @else
                                     <span class="text-gray-400">-</span>
                                 @endif
+                            </td>
+
                             <td class="px-6 py-4">
                                 @if(Auth::user()->role == 'admin')
                                 <form action="{{ route('absensi.destroy', $d->id) }}" method="POST" class="inline" onsubmit="return confirm('Yakin hapus data absensi ini?')">
@@ -214,6 +218,7 @@
                             </td>
                         </tr>
                         @endforelse
+
                     </tbody>
                 </table>
             </div>

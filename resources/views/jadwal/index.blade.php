@@ -16,6 +16,12 @@
             </div>
         @endif
 
+        @if(session('error'))
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+                {{ session('error') }}
+            </div>
+        @endif
+
         @if(Auth::user()->role == 'admin' && !isset($selectedUser))
         <!-- USER LIST VIEW -->
         <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
@@ -24,9 +30,9 @@
                     <thead class="bg-gray-50/80 backdrop-blur">
                         <tr>
                             <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nama Karyawan</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Total Jadwal</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kerja</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Libur</th>
+                            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Total Jadwal</th>
+                            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Jam Kerja</th>
+                            <th class="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Libur</th>
                         </tr>
                     </thead>
 
@@ -41,19 +47,18 @@
                                     <span class="font-medium text-gray-800 group-hover:text-blue-600 transition">{{ $u->name }}</span>
                                 </a>
                             </td>
-
-                            <td class="px-6 py-4 text-gray-600">{{ $u->jadwals_count }}</td>
-                            <td class="px-6 py-4 text-gray-600">{{ $u->jadwals()->where('status', 'Kerja')->count() }}</td>
-                            <td class="px-6 py-4 text-gray-600">{{ $u->jadwals()->where('status', 'Libur')->count() }}</td>
+                            <td class="px-6 py-4 text-center text-gray-600">{{ $u->jadwals_count }}</td>
+                            <td class="px-6 py-4 text-center text-gray-600">{{ $u->total_jam_kerja }} jm</td>
+                            <td class="px-6 py-4 text-center text-gray-600">{{ $u->libur_count }}</td>
                         </tr>
                         @empty
                         <tr>
                             <td colspan="4" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center gap-2">
                                     <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-6 8h6M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-6 8h6M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2v12a2 2 0 002 2z"></path>
                                     </svg>
-                                    <p class="text-gray-500 font-medium">Belum ada data jadwal</p>
+                                    <p class="text-gray-500 font-medium">Belum ada karyawan</p>
                                 </div>
                             </td>
                         </tr>
@@ -113,35 +118,48 @@
                     Import Excel
                 </label>
             </form>
+
+            @if($selectedUser)
+            <form action="{{ route('jadwal.destroyAll', $selectedUser->id) }}" method="POST" class="inline-flex items-center gap-2" onsubmit="return confirm('Hapus SEMUA jadwal {{ $selectedUser->name }}? Aksi ini tidak bisa dibatalkan.');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="inline-flex items-center gap-2 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white px-5 py-2.5 rounded-xl font-medium transition shadow-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6V7M9 7h6"></path>
+                    </svg>
+                    Hapus Semua
+                </button>
+            </form>
+            @endif
         </div>
         @endif
         <p class="text-xs text-gray-400 mt-2">Format: Tanggal, Shift (Pagi/Siang/Malam), Status (Kerja/Libur) — untuk 1 bulan penuh</p>
         <form method="GET" action="{{ route('jadwal.index', request()->only(['user_id'])) }}" class="mt-4 flex flex-wrap items-center gap-3">
-            <label for="periode-filter" class="text-xs font-medium text-gray-600">Periode:</label>
-            <select name="periode" id="periode-filter" class="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="
-                const value = this.value;
-                if (value) {
-                    const [tahun, bulan] = value.split('-');
-                    document.getElementById('bulan-input').value = bulan;
-                    document.getElementById('tahun-input').value = tahun;
-                } else {
-                    document.getElementById('bulan-input').value = '';
-                    document.getElementById('tahun-input').value = '';
-                }
-                this.form.submit();
-            ">
-                <option value="">Semua Periode</option>
+            <label for="bulan-filter" class="text-xs font-medium text-gray-600">Bulan:</label>
+            <select name="bulan" id="bulan-filter" class="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="this.form.submit()">
+                <option value="">Semua Bulan</option>
+                @foreach(['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'] as $i => $nama)
+                    <option value="{{ $i + 1 }}" {{ request('bulan') == ($i + 1) ? 'selected' : '' }}>
+                        {{ $nama }}
+                    </option>
+                @endforeach
+            </select>
+
+            <label for="tahun-filter" class="text-xs font-medium text-gray-600">Tahun:</label>
+            <select name="tahun" id="tahun-filter" class="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="this.form.submit()">
+                <option value="">Semua Tahun</option>
                 @for($y = (date('Y') - 5); $y <= (date('Y') + 5); $y++)
-                    @for($m = 1; $m <= 12; $m++)
-                        <option value="{{ $y }}-{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}" 
-                            {{ request('tahun') == $y && request('bulan') == $m ? 'selected' : '' }}>
-                            {{ date('F', mktime(0,0,0,$m,1)) }} {{ $y }}
-                        </option>
-                    @endfor
+                    <option value="{{ $y }}" {{ request('tahun') == $y ? 'selected' : '' }}>
+                        {{ $y }}
+                    </option>
                 @endfor
             </select>
-            <input type="hidden" name="bulan" id="bulan-input" value="{{ request('bulan') }}">
-            <input type="hidden" name="tahun" id="tahun-input" value="{{ request('tahun') }}">
+
+            @if(request()->filled('bulan') || request()->filled('tahun'))
+            <a href="{{ route('jadwal.index', request()->only(['user_id'])) }}" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                Reset Filter
+            </a>
+            @endif
         </form>
     </div>
 
@@ -185,12 +203,16 @@
                             </td>
 
                             <td class="px-6 py-4">
+                                @if($jadwal->status == 'Libur')
+                                    <span class="text-gray-400 text-sm">-</span>
+                                @else
                                 <span class="px-3 py-1 rounded-full text-xs font-medium
                                     @if($jadwal->shift == 'Pagi') bg-blue-100 text-blue-700
                                     @elseif($jadwal->shift == 'Siang') bg-orange-100 text-orange-700
                                     @else bg-purple-100 text-purple-700 @endif">
                                     {{ $jadwal->shift }}
                                 </span>
+                                @endif
                             </td>
 
                             <td class="px-6 py-4 font-mono text-gray-700">{{ $jadwal->jam_masuk }}</td>

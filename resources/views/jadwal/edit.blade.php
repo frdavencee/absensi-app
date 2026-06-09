@@ -18,28 +18,21 @@
                 {{-- USER --}}
                 <div>
                     <label class="font-semibold">Karyawan</label>
-
-                    <select name="user_id"
-                            class="w-full border rounded-2xl p-4 mt-2">
-
-                        @foreach($users as $user)
-                            <option value="{{ $user->id }}"
-                                {{ $jadwal->user_id == $user->id ? 'selected' : '' }}>
-                                {{ $user->name }}
-                            </option>
-                        @endforeach
-
-                    </select>
+                    <input type="hidden" name="user_id" value="{{ $jadwal->user_id }}">
+                    <input type="text"
+                           value="{{ $jadwal->user->name }}"
+                           class="w-full border rounded-2xl p-4 mt-2 bg-gray-100"
+                           readonly>
                 </div>
 
                 {{-- TANGGAL --}}
                 <div>
                     <label class="font-semibold">Tanggal</label>
 
-                    <input type="date"
-                           name="tanggal"
-                           value="{{ $jadwal->tanggal }}"
-                           class="w-full border rounded-2xl p-4 mt-2">
+                     <input type="date"
+                            name="tanggal"
+                            value="{{ \Carbon\Carbon::parse($jadwal->tanggal)->format('Y-m-d') }}"
+                            class="w-full border rounded-2xl p-4 mt-2">
                 </div>
 
                 {{-- SHIFT --}}
@@ -47,42 +40,27 @@
                     <label class="font-semibold">Shift</label>
 
                     <select name="shift"
+                            id="shift-select"
                             class="w-full border rounded-2xl p-4 mt-2">
 
-                        <option value="Pagi"
-                            {{ $jadwal->shift == 'Pagi' ? 'selected' : '' }}>
-                            Pagi
-                        </option>
-
-                        <option value="Siang"
-                            {{ $jadwal->shift == 'Siang' ? 'selected' : '' }}>
-                            Siang
-                        </option>
-
-                        <option value="Malam"
-                            {{ $jadwal->shift == 'Malam' ? 'selected' : '' }}>
-                            Malam
-                        </option>
+                        <option value="">-- Pilih Shift --</option>
+                        <option value="Pagi">Pagi</option>
+                        <option value="Siang">Siang</option>
+                        <option value="Malam">Malam</option>
 
                     </select>
                 </div>
 
-                {{-- STATUS (FIX FINAL) --}}
+                {{-- STATUS --}}
                 <div>
                     <label class="font-semibold">Status</label>
 
                     <select name="status"
+                            id="status-select"
                             class="w-full border rounded-2xl p-4 mt-2">
 
-                        <option value="Kerja"
-                            {{ $jadwal->status == 'Kerja' ? 'selected' : '' }}>
-                            Kerja
-                        </option>
-
-                        <option value="Libur"
-                            {{ $jadwal->status == 'Libur' ? 'selected' : '' }}>
-                            Libur
-                        </option>
+                        <option value="Kerja">Kerja</option>
+                        <option value="Libur">Libur</option>
 
                     </select>
                 </div>
@@ -94,11 +72,37 @@
                     Update Jadwal
 
                 </button>
-
             </form>
 
         </div>
 
     </div>
+
+    <script>
+        const statusSelect = document.getElementById('status-select');
+        const shiftSelect = document.getElementById('shift-select');
+
+        function toggleShift() {
+            if (statusSelect.value === 'Libur') {
+                shiftSelect.value = '';
+                shiftSelect.disabled = true;
+                shiftSelect.classList.add('bg-gray-100', 'text-gray-400');
+            } else {
+                shiftSelect.disabled = false;
+                shiftSelect.classList.remove('bg-gray-100', 'text-gray-400');
+                if (!shiftSelect.value) {
+                    shiftSelect.value = 'Pagi';
+                }
+            }
+        }
+
+        statusSelect.addEventListener('change', toggleShift);
+
+        document.addEventListener('DOMContentLoaded', function() {
+            statusSelect.value = "{{ $jadwal->status }}";
+            shiftSelect.value = "{{ $jadwal->shift ?? '' }}";
+            toggleShift();
+        });
+    </script>
 
 </x-app-layout>

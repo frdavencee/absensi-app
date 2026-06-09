@@ -96,7 +96,7 @@
                 class="bg-white rounded-3xl shadow-lg p-6 border border-gray-100 hover:scale-105 transition">
 
                 <p class="text-gray-500 mb-2">
-                    Total Absen
+                    Total Jadwal
                 </p>
 
                 <h2 class="text-5xl font-bold text-blue-600">
@@ -133,67 +133,90 @@
 
             </div>
 
-            <!-- Izin -->
+            <!-- Izin/Sakit -->
             <div
                 class="bg-white rounded-3xl shadow-lg p-6 border border-gray-100 hover:scale-105 transition">
 
                 <p class="text-gray-500 mb-2">
-                    Izin
+                    Izin / Sakit
                 </p>
 
                 <h2 class="text-5xl font-bold text-yellow-500">
-                    {{ $izin }}
+                    {{ $izinSakit }}
                 </h2>
 
             </div>
 
-            <!-- Sakit -->
+            <!-- Tidak Hadir -->
             <div
                 class="bg-white rounded-3xl shadow-lg p-6 border border-gray-100 hover:scale-105 transition">
 
                 <p class="text-gray-500 mb-2">
-                    Sakit
+                    Tidak Hadir
                 </p>
 
-                <h2 class="text-5xl font-bold text-purple-500">
-                    {{ $sakit }}
+                <h2 class="text-5xl font-bold text-gray-500">
+                    {{ $tidakHadir }}
                 </h2>
 
             </div>
 
         </div>
 
-        <!-- Chart + GPS -->
-        <div
-            class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        @if(Auth::user()->role !== 'admin' && isset($jadwalHariIni))
+        <!-- Jadwal Hari Ini -->
+        <div class="mb-8">
+            <div class="bg-white rounded-3xl shadow-lg p-6 border border-gray-100">
+                <h2 class="text-2xl font-bold mb-4">Jadwal Hari Ini</h2>
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-6 8h6M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <span class="font-semibold text-gray-700">
+                            {{ \Carbon\Carbon::parse($jadwalHariIni->tanggal)->format('d M Y') }}
+                        </span>
+                    </div>
 
-            <!-- Chart -->
-            <div
-                class="lg:col-span-2 bg-white rounded-3xl shadow-lg p-6">
-
-                <div
-                    class="flex justify-between items-center mb-5">
-
-                    <h2 class="text-2xl font-bold">
-                        Statistik Absensi
-                    </h2>
-
-                    <span
-                        class="text-sm text-gray-400">
-
-                        Realtime
-
-                    </span>
-
+                    <div class="flex items-center gap-2">
+                        @if($jadwalHariIni->status == 'Libur')
+                        <span class="px-4 py-1.5 rounded-full text-sm font-medium bg-gray-200 text-gray-600">
+                            Libur
+                        </span>
+                        <span class="text-gray-500 text-sm">Tidak ada jam kerja</span>
+                        @else
+                        <span class="px-4 py-1.5 rounded-full text-sm font-medium
+                            @if($jadwalHariIni->shift == 'Pagi') bg-blue-100 text-blue-700
+                            @elseif($jadwalHariIni->shift == 'Siang') bg-orange-100 text-orange-700
+                            @else bg-purple-100 text-purple-700 @endif">
+                            {{ $jadwalHariIni->shift }}
+                        </span>
+                        <span class="text-gray-600 text-sm">
+                            {{ $jadwalHariIni->jam_masuk ?? '-' }} - {{ $jadwalHariIni->jam_pulang ?? '-' }}
+                        </span>
+                        @endif
+                    </div>
                 </div>
-
-                <canvas id="absensiChart"></canvas>
-
             </div>
+        </div>
+        @endif
 
-            <!-- GPS -->
-            <div
-                class="bg-white rounded-3xl shadow-lg p-6">
+        @if(Auth::user()->role !== 'admin' && $absensiHariIni && in_array($absensiHariIni->status, ['Izin', 'Sakit']) && $absensiHariIni->approval == 'Approved')
+        <div class="mb-6 bg-yellow-50 border border-yellow-200 text-yellow-800 px-5 py-4 rounded-2xl">
+            <div class="flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span class="font-bold">Anda sedang {{ strtolower($absensiHariIni->status) }} hari ini</span>
+            </div>
+            <p class="text-sm mt-1 text-yellow-700">Anda tidak dapat melakukan absen masuk/pulang untuk tanggal ini.</p>
+        </div>
+        @endif
+
+        <!-- GPS -->
+        <div class="grid grid-cols-1 gap-6 mb-8">
+
+            <div class="bg-white rounded-3xl shadow-lg p-6">
 
                 <h2 class="text-2xl font-bold mb-5">
                     Status Lokasi
@@ -237,7 +260,7 @@
                     </iframe>
                 </div>
 
-<a
+                <a
                     id="map-link"
                     href="#"
                     target="_blank"
@@ -447,7 +470,8 @@
 
             <form
                 action="{{ route('izin') }}"
-                method="POST">
+                method="POST"
+                enctype="multipart/form-data">
 
                 @csrf
 
@@ -628,41 +652,6 @@
     }
 
     window.onload = getLocation;
-
-    const ctx = document.getElementById('absensiChart');
-
-    new Chart(ctx, {
-
-        type: 'doughnut',
-
-        data: {
-
-            labels: [
-                'Hadir',
-                'Telat'
-            ],
-
-            datasets: [{
-
-                label: 'Jumlah',
-
-                data: [
-                    {{ $hadir }},
-                    {{ $telat }}
-                ],
-
-                borderWidth: 2
-
-            }]
-        },
-
-        options: {
-
-            responsive: true
-
-        }
-
-    });
 
     // Camera functions
     let mediaStream = null;

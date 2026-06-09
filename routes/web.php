@@ -83,6 +83,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/jadwal/{jadwal}/edit', [JadwalController::class, 'edit'])->name('jadwal.edit');
         Route::put('/jadwal/{jadwal}', [JadwalController::class, 'update'])->name('jadwal.update');
         Route::delete('/jadwal/{jadwal}', [JadwalController::class, 'destroy'])->name('jadwal.destroy');
+        Route::delete('/jadwal/user/{user}', [JadwalController::class, 'destroyAll'])->name('jadwal.destroyAll');
     });
 
     /*

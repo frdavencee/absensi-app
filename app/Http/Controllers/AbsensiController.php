@@ -28,17 +28,39 @@ class AbsensiController extends Controller
             ->first();
 
         if ($user->role === 'admin') {
-            $total = Absensi::count();
+            $total = Jadwal::count();
             $hadir = Absensi::where('status', 'Hadir')->count();
             $telat = Absensi::where('status', 'Telat')->count();
-            $izin = Absensi::where('status', 'Izin')->count();
-            $sakit = Absensi::where('status', 'Sakit')->count();
+            $izinSakit = Absensi::whereIn('status', ['Izin', 'Sakit'])->count();
+            $tidakHadir = 0;
+            $today = Carbon::today();
+            foreach (\App\Models\User::all() as $u) {
+                foreach (Jadwal::where('user_id', $u->id)->where('status', 'Kerja')->whereDate('tanggal', '<', $today)->get() as $jadwal) {
+                    $ada = Absensi::where('user_id', $u->id)
+                        ->where('tanggal', $jadwal->tanggal)
+                        ->whereIn('status', ['Hadir', 'Telat', 'Izin', 'Sakit'])
+                        ->exists();
+                    if (!$ada) {
+                        $tidakHadir++;
+                    }
+                }
+            }
         } else {
-            $total = Absensi::where('user_id', $user->id)->count();
+            $total = Jadwal::where('user_id', $user->id)->count();
             $hadir = Absensi::where('user_id', $user->id)->where('status', 'Hadir')->count();
             $telat = Absensi::where('user_id', $user->id)->where('status', 'Telat')->count();
-            $izin = Absensi::where('user_id', $user->id)->where('status', 'Izin')->count();
-            $sakit = Absensi::where('user_id', $user->id)->where('status', 'Sakit')->count();
+            $izinSakit = Absensi::where('user_id', $user->id)->whereIn('status', ['Izin', 'Sakit'])->count();
+            $tidakHadir = 0;
+            $today = Carbon::today();
+            foreach (Jadwal::where('user_id', $user->id)->where('status', 'Kerja')->whereDate('tanggal', '<', $today)->get() as $jadwal) {
+                $adaAbsensi = Absensi::where('user_id', $user->id)
+                    ->where('tanggal', $jadwal->tanggal)
+                    ->whereIn('status', ['Hadir', 'Telat', 'Izin', 'Sakit'])
+                    ->exists();
+                if (!$adaAbsensi) {
+                    $tidakHadir++;
+                }
+            }
         }
 
         return view('dashboard', compact(
@@ -47,8 +69,8 @@ class AbsensiController extends Controller
             'total',
             'hadir',
             'telat',
-            'izin',
-            'sakit'
+            'izinSakit',
+            'tidakHadir'
         ));
     }
 
@@ -72,8 +94,13 @@ class AbsensiController extends Controller
 
         $activeJadwal = null;
         foreach ($jadwals as $jadwal) {
-            $start = Carbon::createFromFormat('Y-m-d H:i:s', $jadwal->tanggal . ' ' . $jadwal->jam_masuk);
-            $end = Carbon::createFromFormat('Y-m-d H:i:s', $jadwal->tanggal . ' ' . $jadwal->jam_pulang);
+            if (empty($jadwal->jam_masuk) || empty($jadwal->jam_pulang)) {
+                continue;
+            }
+
+            $tanggalStr = $jadwal->tanggal instanceof \Carbon\Carbon ? $jadwal->tanggal->format('Y-m-d') : (string) $jadwal->tanggal;
+            $start = Carbon::createFromFormat('Y-m-d H:i:s', $tanggalStr . ' ' . $jadwal->jam_masuk);
+            $end = Carbon::createFromFormat('Y-m-d H:i:s', $tanggalStr . ' ' . $jadwal->jam_pulang);
 
             // If shift crosses midnight (end time earlier than start time), add one day to end
             if ($jadwal->jam_pulang < $jadwal->jam_masuk) {
@@ -91,6 +118,18 @@ class AbsensiController extends Controller
         }
 
         // Check if already absen for this shift
+        $tanggalJadwal = $tanggalStr ?? ($activeJadwal->tanggal instanceof \Carbon\Carbon ? $activeJadwal->tanggal->format('Y-m-d') : (string) $activeJadwal->tanggal);
+
+        $hasIzinSakit = Absensi::where('user_id', $user->id)
+            ->whereDate('tanggal', $tanggalJadwal)
+            ->whereIn('status', ['Izin', 'Sakit'])
+            ->where('approval', 'Approved')
+            ->exists();
+
+        if ($hasIzinSakit) {
+            return back()->with('error', 'Tidak bisa absen pada tanggal tersebut karena sedang izin/sakit yang sudah disetujui');
+        }
+
         $absen = Absensi::where('user_id', $user->id)
             ->where('tanggal', $activeJadwal->tanggal)
             ->first();
@@ -99,8 +138,7 @@ class AbsensiController extends Controller
             return back()->with('error', 'Sudah absen untuk shift ini');
         }
 
-        // Determine status: Telat if clock-in time is after shift start time
-        $start = Carbon::createFromFormat('Y-m-d H:i:s', $activeJadwal->tanggal . ' ' . $activeJadwal->jam_masuk);
+        $start = Carbon::createFromFormat('Y-m-d H:i:s', ($activeJadwal->tanggal instanceof \Carbon\Carbon ? $activeJadwal->tanggal->format('Y-m-d') : (string) $activeJadwal->tanggal) . ' ' . $activeJadwal->jam_masuk);
         $status = $now->greaterThan($start) ? 'Telat' : 'Hadir';
 
         $data = [
@@ -145,8 +183,15 @@ class AbsensiController extends Controller
             return back()->with('error', 'Belum absen masuk');
         }
 
-        if ($absen->jam_pulang) {
-            return back()->with('error', 'Sudah absen pulang');
+        $tanggalStr = $absen->tanggal instanceof \Carbon\Carbon ? $absen->tanggal->format('Y-m-d') : (string) $absen->tanggal;
+        $hasIzinSakit = Absensi::where('user_id', $user->id)
+            ->whereDate('tanggal', $tanggalStr)
+            ->whereIn('status', ['Izin', 'Sakit'])
+            ->where('approval', 'Approved')
+            ->exists();
+
+        if ($hasIzinSakit) {
+            return back()->with('error', 'Tidak bisa absen pulang pada tanggal tersebut karena sedang izin/sakit yang sudah disetujui');
         }
 
         $absen->update([
@@ -210,27 +255,31 @@ class AbsensiController extends Controller
         $user = Auth::user();
 
         if ($user->role === 'admin' && !$request->filled('user_id')) {
-            $userIds = Absensi::select('user_id')->distinct()->pluck('user_id');
-            $usersWithRecords = \App\Models\User::whereIn('id', $userIds)
-                ->withCount('absensis')
-                ->orderBy('name')
-                ->get();
+            $users = \App\Models\User::orderBy('name')->get();
+            $users = $users->map(function ($u) {
+                $u->total_hadir = $u->absensis()->where('status', 'Hadir')->count();
+                $u->total_telat = $u->absensis()->where('status', 'Telat')->count();
+                $u->total_izin = $u->absensis()->where('status', 'Izin')->count();
+                $u->total_sakit = $u->absensis()->where('status', 'Sakit')->count();
+                return $u;
+            });
 
-            return view('absensi.data', compact('usersWithRecords'));
+            return view('absensi.data', compact('users'));
         }
 
         $query = Absensi::with('user');
+
+        if ($user->role !== 'admin') {
+            $query->where('user_id', $user->id);
+        } elseif ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
 
         if ($request->filled('bulan')) {
             $query->whereMonth('tanggal', $request->bulan);
         }
         if ($request->filled('tahun')) {
             $query->whereYear('tanggal', $request->tahun);
-        }
-        if ($user->role !== 'admin') {
-            $query->where('user_id', $user->id);
-        } elseif ($request->filled('user_id')) {
-            $query->where('user_id', $request->user_id);
         }
 
         $data = $query->orderBy('tanggal', 'desc')->get();
@@ -240,7 +289,9 @@ class AbsensiController extends Controller
             $selectedUser = \App\Models\User::find($request->user_id);
         }
 
-        return view('absensi.data', compact('data', 'selectedUser'));
+        $users = \App\Models\User::orderBy('name')->get();
+
+        return view('absensi.data', compact('data', 'users', 'selectedUser'));
     }
 
     public function pengajuan(Request $request)
