@@ -8,7 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-Schema::create('notifications', function (Blueprint $table) {
+        Schema::dropIfExists('notifications');
+
+        Schema::create('notifications', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('type');
             $table->json('data');
@@ -23,6 +25,10 @@ Schema::create('notifications', function (Blueprint $table) {
 
     public function down(): void
     {
+        Schema::table('notifications', function (Blueprint $table) {
+            $table->dropIndex(['notifiable_type', 'notifiable_id']);
+        });
+
         Schema::dropIfExists('notifications');
     }
 };
