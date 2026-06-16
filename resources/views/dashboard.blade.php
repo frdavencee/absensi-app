@@ -428,60 +428,14 @@
 
                 </div>
 
-                <button
-                    id="btnPulang"
-                    type="submit"
-                    disabled
-                    class="w-full bg-gray-400 text-white py-3 rounded-2xl font-bold">
+            </div>
 
-                    Absen Pulang
+            <button
+                @if(Auth::user()->role !== 'admin' && $absensiHariIni && in_array($absensiHariIni->status, ['Izin', 'Sakit']) && $absensiHariIni->approval == 'Approved') disabled class="w-full bg-gray-400 text-white py-3 rounded-2xl font-bold cursor-not-allowed" @else id="btnPulang" type="submit" disabled class="w-full bg-gray-400 text-white py-3 rounded-2xl font-bold" @endif>
 
-                </button>
+                Absen Pulang
 
-                    <button
-                        type="button"
-                        onclick="capturePhoto('pulang')"
-                        id="btn-capture-pulang"
-                        @if(Auth::user()->role !== 'admin' && $absensiHariIni && in_array($absensiHariIni->status, ['Izin', 'Sakit']) && $absensiHariIni->approval == 'Approved') disabled class="hidden w-full bg-gray-300 text-gray-500 py-3 rounded-xl font-bold mb-2 cursor-not-allowed" @else class="hidden w-full bg-green-600 text-white py-3 rounded-xl font-bold mb-2" @endif>
-
-                        Ambil Foto
-
-                    </button>
-
-                    <button
-                        type="button"
-                        onclick="retakePhoto('pulang')"
-                        id="btn-retake-pulang"
-                        @if(Auth::user()->role !== 'admin' && $absensiHariIni && in_array($absensiHariIni->status, ['Izin', 'Sakit']) && $absensiHariIni->approval == 'Approved') disabled class="hidden w-full bg-gray-300 text-gray-500 py-3 rounded-xl font-bold mb-2 cursor-not-allowed" @else class="hidden w-full bg-gray-500 text-white py-3 rounded-xl font-bold mb-2" @endif>
-
-                        Ulangi Foto
-
-                    </button>
-                    <br>
-                    <br>
-                    <br>
-                    <br>
-                    <br>
-                    <br>
-                    <br>
-                    <br>
-                    <br>
-                    <br>
-                    <br>
-                    <br>
-                    <style>
-
-                    </style>
-                    @endif
-
-                </div>
-
-                <button
-                    @if(Auth::user()->role !== 'admin' && $absensiHariIni && in_array($absensiHariIni->status, ['Izin', 'Sakit']) && $absensiHariIni->approval == 'Approved') disabled class="w-full bg-gray-400 text-white py-3 rounded-2xl font-bold cursor-not-allowed" @else id="btnPulang" type="submit" disabled class="w-full bg-gray-400 text-white py-3 rounded-2xl font-bold" @endif>
-
-                    Absen Pulang
-
-                </button>
+            </button>
 
             </form>
 

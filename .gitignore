@@ -23,6 +23,8 @@
 /storage/foto
 /storage/pail
 /vendor
+/deploy_staging
+/absensi-app-infinityfree.zip
 _ide_helper.php
 Homestead.json
 Homestead.yaml
